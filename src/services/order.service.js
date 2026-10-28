@@ -418,8 +418,11 @@ export const updateOrderStatus = async (id, status, tenantId, performerId, remar
   const currentStatus = String(order.status || currentMeta.chauffeur_status || '').toLowerCase().replace(/\s+/g, '_');
 
   let isChauffeur = order.orderType === 'CHAUFFEUR' || 
-                      order.missionType === 'CHAUFFEUR' || 
+                      String(order.orderType || '').toUpperCase() === 'CHAUFFEUR' ||
+                      String(order.orderType || '').toLowerCase() === 'service' ||
+                      String(order.missionType || '').toUpperCase() === 'CHAUFFEUR' || 
                       String(currentMeta.missionType || '').toUpperCase() === 'CHAUFFEUR' || 
+                      String(currentMeta.mission_type || '').toUpperCase() === 'CHAUFFEUR' || 
                       String(currentMeta.orderType || '').toUpperCase() === 'CHAUFFEUR' ||
                       currentMeta.serviceType !== undefined ||
                       currentMeta.chauffeur_status !== undefined;

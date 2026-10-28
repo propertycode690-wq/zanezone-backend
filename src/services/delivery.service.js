@@ -207,7 +207,11 @@ export const createDelivery = async (data, performerId, tenantId) => {
       orderMetadata.total_amount = computedTotal;
       orderMetadata.subtotal = computedTotal;
     }
-    if (data.missionType) orderMetadata.missionType = data.missionType;
+    const isChauffeur = (data.missionType === 'Chauffeur' || data.mission_type === 'Chauffeur' || String(data.missionType || data.mission_type || '').toLowerCase() === 'chauffeur');
+    if (data.missionType || data.mission_type) {
+      orderMetadata.missionType = isChauffeur ? 'Chauffeur' : (data.missionType || data.mission_type);
+      orderMetadata.mission_type = isChauffeur ? 'Chauffeur' : (data.mission_type || data.missionType);
+    }
     if (data.transportMode) orderMetadata.transportMode = data.transportMode;
     const resolvedCreatePickup = data.pickupLocation || data.pickup_location || data.pickup;
     if (resolvedCreatePickup) {
@@ -227,7 +231,7 @@ export const createDelivery = async (data, performerId, tenantId) => {
       clientId: clientIdToUse,
       createdById: orderCreatedById,
       status: 'approved',
-      orderType: data.missionType === 'Chauffeur' ? 'Service' : 'Delivery',
+      orderType: isChauffeur ? 'CHAUFFEUR' : 'Delivery',
       priority: 'high',
       totalAmount: computedTotal,
       metadata: orderMetadata
