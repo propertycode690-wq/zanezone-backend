@@ -136,16 +136,8 @@ export const findAllDeliveries = async (tenantId, query) => {
         userId: meta.driver_user_id || meta.driverId || null
       };
     }
-    const isChauffeur = String(d.missionType || '').toLowerCase() === 'chauffeur' ||
-      String(d.order?.orderType || '').toUpperCase() === 'CHAUFFEUR' ||
-      String(d.order?.orderType || '').toLowerCase() === 'service' ||
-      String(meta.missionType || meta.mission_type || '').toLowerCase() === 'chauffeur';
-    const normalizedMissionType = isChauffeur ? 'Chauffeur' : (d.missionType || 'Delivery');
-
     return {
       ...d,
-      missionType: normalizedMissionType,
-      mission_type: normalizedMissionType,
       vehicleRef: resolvedVehicleRef,
       plateNumber: resolvedVehicleRef,
       assignee: resolvedAssignee,
@@ -167,11 +159,7 @@ export const updateDeliveryStatus = async (tx, id, status, extraData = {}) => {
     let orderStatus = null;
     if (['delivered', 'completed', 'done'].includes(norm)) {
       orderStatus = 'completed';
-    } else if (norm === 'arrived') {
-      orderStatus = 'arrived';
-    } else if (norm === 'en_route') {
-      orderStatus = 'en_route';
-    } else if (['in_transit', 'out_for_delivery', 'dispatched'].includes(norm)) {
+    } else if (['in_transit', 'out_for_delivery', 'en_route', 'dispatched'].includes(norm)) {
       orderStatus = 'in_transit';
     } else if (['assigned', 'accepted'].includes(norm)) {
       orderStatus = 'assigned';
@@ -222,11 +210,7 @@ export const updateDelivery = async (id, data) => {
     let orderStatus = null;
     if (['delivered', 'completed', 'done'].includes(norm)) {
       orderStatus = 'completed';
-    } else if (norm === 'arrived') {
-      orderStatus = 'arrived';
-    } else if (norm === 'en_route') {
-      orderStatus = 'en_route';
-    } else if (['in_transit', 'out_for_delivery', 'dispatched'].includes(norm)) {
+    } else if (['in_transit', 'out_for_delivery', 'en_route', 'dispatched'].includes(norm)) {
       orderStatus = 'in_transit';
     } else if (['assigned', 'accepted'].includes(norm)) {
       orderStatus = 'assigned';

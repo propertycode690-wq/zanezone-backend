@@ -168,7 +168,15 @@ export const updateUser = async (req, res, next) => {
     if (!isCustomer) {
       if (data.roleId !== undefined && data.roleId) payload.roleId = Number(data.roleId);
       if (data.status !== undefined) payload.status = data.status;
-      if (data.vacationBalance !== undefined) payload.vacationBalance = Number(data.vacationBalance) || 0;
+      if (data.vacationBalance !== undefined) {
+        const vQuota = Number(data.vacationBalance) || 0;
+        payload.vacationBalance = vQuota;
+        const baseBanking = (typeof data.bankingInfo === 'object' && data.bankingInfo) ? data.bankingInfo : {};
+        payload.bankingInfo = {
+          ...baseBanking,
+          vacationQuota: vQuota
+        };
+      }
       if (data.employmentStatus !== undefined) payload.employmentStatus = data.employmentStatus || 'Full Time';
     }
 

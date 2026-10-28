@@ -230,12 +230,7 @@ export const findAllOrders = async (tenantId, query) => {
       OR: [
         { orderType: orderType },
         { orderType: String(orderType).toLowerCase() },
-        { orderType: String(orderType).toUpperCase() },
-        ...(String(orderType).toUpperCase() === 'CHAUFFEUR' ? [
-          { orderType: 'Service' },
-          { orderType: 'service' },
-          { orderType: 'SERVICE' }
-        ] : [])
+        { orderType: String(orderType).toUpperCase() }
       ]
     })
   };
@@ -305,19 +300,10 @@ export const findAllOrders = async (tenantId, query) => {
       ? o.client
       : (metadataObj.client || o.client);
     const effectiveClientId = effectiveClient ? effectiveClient.id : (o.clientId || metadataObj.clientId || metadataObj.client?.id);
-    const isChauffeur = String(rest.orderType || '').toUpperCase() === 'CHAUFFEUR' ||
-      String(rest.orderType || '').toLowerCase() === 'service' ||
-      String(enrichedMeta.missionType || enrichedMeta.mission_type || '').toLowerCase() === 'chauffeur' ||
-      (Array.isArray(o.deliveries) && o.deliveries.some(d => String(d.missionType || '').toLowerCase() === 'chauffeur'));
-    const normalizedOrderType = isChauffeur ? 'CHAUFFEUR' : rest.orderType;
-    const normalizedMissionType = isChauffeur ? 'Chauffeur' : (enrichedMeta.missionType || enrichedMeta.mission_type || null);
 
     return {
       ...enrichedMeta,
       ...rest,
-      orderType: normalizedOrderType,
-      missionType: normalizedMissionType,
-      mission_type: normalizedMissionType,
       client: effectiveClient,
       clientId: effectiveClientId,
       items: itemsArr,

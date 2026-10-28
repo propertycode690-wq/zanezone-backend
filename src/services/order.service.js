@@ -222,12 +222,7 @@ export const createOrder = async (data, performerId, tenantId) => {
     0
   );
 
-  const isChauffeurOrder = String(orderData.orderType || data.type || '').toUpperCase() === 'CHAUFFEUR' ||
-    String(orderData.orderType || data.type || '').toLowerCase() === 'service' ||
-    String(data.missionType || data.mission_type || existingMeta.missionType || existingMeta.mission_type || '').toLowerCase() === 'chauffeur';
-  if (isChauffeurOrder) {
-    orderData.orderType = 'CHAUFFEUR';
-  }
+  const isChauffeurOrder = String(orderData.orderType || data.type || '').toUpperCase() === 'CHAUFFEUR';
   const isMarketplaceOrder = ['MARKETPLACE', 'MARKET_ORDER', 'CUSTOM', 'PURCHASE'].includes(String(orderData.orderType || data.type || '').toUpperCase());
   if (isChauffeurOrder) {
     const sType = data.serviceType || existingMeta.serviceType || 'One Way';
@@ -291,8 +286,6 @@ export const createOrder = async (data, performerId, tenantId) => {
 
     orderData.metadata = {
       ...existingMeta,
-      missionType: 'Chauffeur',
-      mission_type: 'Chauffeur',
       numberOfPassengers,
       passengers: numberOfPassengers,
       passengerCount: numberOfPassengers,
@@ -317,11 +310,8 @@ export const createOrder = async (data, performerId, tenantId) => {
       customItems: metaCustomItems.length > 0 ? metaCustomItems : itemsToSave
     };
   } else {
-    const nonChauffeurMissionType = data.missionType || data.mission_type || existingMeta.missionType || existingMeta.mission_type || 'Delivery';
     orderData.metadata = {
       ...existingMeta,
-      missionType: nonChauffeurMissionType,
-      mission_type: nonChauffeurMissionType,
       deliveryType: resolvedDeliveryType,
       delivery_type: resolvedDeliveryType,
       delivery_mode: resolvedDeliveryType,
@@ -618,6 +608,7 @@ export const updateOrderStatus = async (id, status, tenantId, performerId, remar
   };
 };
 
+
 export const updateOrder = async (id, data, tenantId, performerId) => {
   const order = await getOrderById(id, tenantId);
   const { items, ...orderData } = data;
@@ -756,11 +747,9 @@ export const updateOrder = async (id, data, tenantId, performerId) => {
   // Persist Order Type
   const incomingOrderType = data.orderType || data.type || orderData.orderType || orderData.type;
   if (incomingOrderType) {
-    const isIncomingChauf = String(incomingOrderType).toUpperCase() === 'CHAUFFEUR' || String(incomingOrderType).toLowerCase() === 'service';
-    const normType = isIncomingChauf ? 'CHAUFFEUR' : String(incomingOrderType);
-    dbData.orderType = normType;
-    metadataExt.orderType = normType;
-    metadataExt.type = normType;
+    dbData.orderType = String(incomingOrderType);
+    metadataExt.orderType = String(incomingOrderType);
+    metadataExt.type = String(incomingOrderType);
   }
 
   // Calculate and assign total amount
@@ -1061,10 +1050,7 @@ export const updateOrder = async (id, data, tenantId, performerId) => {
   });
 
   // Cross-table synchronization: Sync Driver, Vehicle & Addresses to Delivery
-  const isChauffeur = ['CHAUFFEUR'].includes(String(updatedOrder.orderType || '').toUpperCase()) ||
-    String(updatedOrder.orderType || '').toLowerCase() === 'service' ||
-    String(finalMetadata.missionType || finalMetadata.mission_type || '').toLowerCase() === 'chauffeur';
-  const isChauffeurOrDelivery = isChauffeur || ['PRODUCT', 'DELIVERY', 'CONCIERGE'].includes(String(updatedOrder.orderType || '').toUpperCase());
+  const isChauffeurOrDelivery = ['CHAUFFEUR', 'PRODUCT', 'DELIVERY', 'CONCIERGE'].includes(String(updatedOrder.orderType || '').toUpperCase());
   const hasDriverOrVehicle = Boolean(driverName || driverUserId || plateNumber || employee);
   const hasAddressUpdate = incomingPickup !== undefined || incomingDrop !== undefined;
 
@@ -1091,7 +1077,7 @@ export const updateOrder = async (id, data, tenantId, performerId) => {
           if (data.status) {
             targetDelStatus = ['completed', 'delivered'].includes(newStatus)
               ? 'delivered'
-              : (newStatus === 'arrived' ? 'arrived' : (newStatus === 'en_route' ? 'en_route' : (['in_transit', 'en_route'].includes(newStatus) ? 'in_transit' : 'assigned')));
+              : (newStatus === 'en_route' ? 'en_route' : (['in_transit', 'en_route'].includes(newStatus) ? 'in_transit' : 'assigned'));
           } else if (hasDriverOrVehicle && ['pending', 'pending_review', 'created', 'draft'].includes(String(existingDelivery.status || '').toLowerCase())) {
             targetDelStatus = 'assigned';
           }
@@ -1101,7 +1087,6 @@ export const updateOrder = async (id, data, tenantId, performerId) => {
             ...(plateNumber ? { vehicleRef: String(plateNumber).trim() } : {}),
             ...(incomingPickup !== undefined ? { pickupLocation: resolvedPickup } : {}),
             ...(incomingDrop !== undefined ? { dropLocation: resolvedDrop } : {}),
-            ...(isChauffeur ? { missionType: 'Chauffeur' } : {}),
             remarks: JSON.stringify(existingRemarks),
             status: targetDelStatus
           };
@@ -1122,7 +1107,7 @@ export const updateOrder = async (id, data, tenantId, performerId) => {
         if (data.status) {
           initialDelStatus = ['completed', 'delivered'].includes(newStatus)
             ? 'delivered'
-            : (newStatus === 'arrived' ? 'arrived' : (newStatus === 'en_route' ? 'en_route' : (['in_transit', 'en_route'].includes(newStatus) ? 'in_transit' : 'assigned')));
+            : (newStatus === 'en_route' ? 'en_route' : (['in_transit', 'en_route'].includes(newStatus) ? 'in_transit' : 'assigned'));
         }
 
         await prisma.delivery.create({
@@ -1134,7 +1119,7 @@ export const updateOrder = async (id, data, tenantId, performerId) => {
             assignedTo: employee ? employee.id : null,
             warehouseId: warehouse ? warehouse.id : 1,
             status: initialDelStatus,
-            missionType: isChauffeur ? 'Chauffeur' : (updatedOrder.orderType === 'CHAUFFEUR' ? 'Chauffeur' : 'Delivery'),
+            missionType: updatedOrder.orderType === 'CHAUFFEUR' ? 'Chauffeur' : 'Delivery',
             transportMode: 'Road',
             vehicleRef: plateNumber ? String(plateNumber).trim() : null,
             pickupLocation: finalMetadata.pickupLocation || finalMetadata.pickup_location || null,
@@ -1167,16 +1152,13 @@ export const updateOrder = async (id, data, tenantId, performerId) => {
             where: { id: existingMission.id },
             data: {
               assignedEmployeeId: employee.id,
-              missionType: isChauffeur ? 'Chauffeur' : (existingMission.missionType || 'LOGISTICS'),
-              status: ['completed', 'delivered'].includes(newStatus) ? 'completed' : (newStatus === 'arrived' ? 'arrived' : (['en_route', 'in_transit'].includes(newStatus) ? 'en_route' : 'assigned')),
+              status: ['completed', 'delivered'].includes(newStatus) ? 'completed' : 'assigned',
               metadata: {
                 ...(typeof existingMission.metadata === 'object' ? existingMission.metadata : {}),
                 driverName,
                 driverId: driverUserId,
                 plateNumber,
-                vehicleId: plateNumber,
-                missionType: isChauffeur ? 'Chauffeur' : 'LOGISTICS',
-                mission_type: isChauffeur ? 'Chauffeur' : 'LOGISTICS'
+                vehicleId: plateNumber
               }
             }
           });
@@ -1352,3 +1334,5 @@ export const deleteOrder = async (orderId, tenantIdToFilter, clientIdToFilter, p
     return true;
   }, { maxWait: 15000, timeout: 30000 });
 };
+
+
