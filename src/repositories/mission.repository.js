@@ -121,7 +121,19 @@ export const findAllMissions = async (tenantId, query) => {
     prisma.mission.count({ where })
   ]);
 
-  return { missions, total, page: Number(page), totalPages: Math.ceil(total / limit) };
+  const enrichedMissions = missions.map(m => {
+    const isChauffeur = String(m.missionType || '').toLowerCase() === 'chauffeur' ||
+      String(m.delivery?.missionType || '').toLowerCase() === 'chauffeur' ||
+      String(m.order?.orderType || '').toUpperCase() === 'CHAUFFEUR' ||
+      String(m.order?.orderType || '').toLowerCase() === 'service';
+    const normalizedMissionType = isChauffeur ? 'Chauffeur' : (m.missionType || 'LOGISTICS');
+    return {
+      ...m,
+      missionType: normalizedMissionType,
+      mission_type: normalizedMissionType
+    };
+  });
+  return { missions: enrichedMissions, total, page: Number(page), totalPages: Math.ceil(total / limit) };
 };
 
 export const updateMissionStatus = async (tx, id, status, extraData = {}) => {

@@ -31,6 +31,15 @@ export const createDelivery = async (data, performerId, tenantId) => {
     'dueDate', 'pickupLocation', 'dropLocation', 'routeDistance',
     'staffPayRate', 'deliveryFee'
   ];
+  const incomingMissionType = data.missionType || data.mission_type;
+  const isChauffeurInput = String(incomingMissionType || '').toLowerCase() === 'chauffeur' ||
+    String(data.orderType || '').toUpperCase() === 'CHAUFFEUR' ||
+    String(data.orderType || '').toLowerCase() === 'service';
+  if (isChauffeurInput) {
+    deliveryData.missionType = 'Chauffeur';
+  } else if (incomingMissionType) {
+    deliveryData.missionType = incomingMissionType;
+  }
   Object.keys(deliveryData).forEach(key => {
     if (!validDeliveryFields.includes(key)) delete deliveryData[key];
   });
@@ -207,7 +216,13 @@ export const createDelivery = async (data, performerId, tenantId) => {
       orderMetadata.total_amount = computedTotal;
       orderMetadata.subtotal = computedTotal;
     }
-    if (data.missionType) orderMetadata.missionType = data.missionType;
+    if (isChauffeurInput || String(data.missionType || data.mission_type || '').toLowerCase() === 'chauffeur') {
+      orderMetadata.missionType = 'Chauffeur';
+      orderMetadata.mission_type = 'Chauffeur';
+    } else if (data.missionType || data.mission_type) {
+      orderMetadata.missionType = data.missionType || data.mission_type;
+      orderMetadata.mission_type = data.missionType || data.mission_type;
+    }
     if (data.transportMode) orderMetadata.transportMode = data.transportMode;
     const resolvedCreatePickup = data.pickupLocation || data.pickup_location || data.pickup;
     if (resolvedCreatePickup) {
@@ -227,7 +242,7 @@ export const createDelivery = async (data, performerId, tenantId) => {
       clientId: clientIdToUse,
       createdById: orderCreatedById,
       status: 'approved',
-      orderType: data.missionType === 'Chauffeur' ? 'Service' : 'Delivery',
+      orderType: (isChauffeurInput || String(data.missionType || data.mission_type || '').toLowerCase() === 'chauffeur') ? 'CHAUFFEUR' : (data.orderType || 'Delivery'),
       priority: 'high',
       totalAmount: computedTotal,
       metadata: orderMetadata
@@ -543,6 +558,11 @@ export const updateDelivery = async (id, data, tenantId, performerId, clientId =
     delete parsedData.vehicle_id;
     delete parsedData.vehicle;
   }
+  if (parsedData.missionType !== undefined || parsedData.mission_type !== undefined) {
+    const rawMType = parsedData.missionType !== undefined ? parsedData.missionType : parsedData.mission_type;
+    parsedData.missionType = String(rawMType || '').toLowerCase() === 'chauffeur' ? 'Chauffeur' : rawMType;
+    delete parsedData.mission_type;
+  }
   if (parsedData.mode !== undefined || parsedData.transportMode !== undefined) {
     parsedData.transportMode = String(parsedData.mode || parsedData.transportMode || 'Road');
     delete parsedData.mode;
@@ -663,7 +683,9 @@ export const updateDelivery = async (id, data, tenantId, performerId, clientId =
     const normDelStatus = String(data.status || parsedData.status || '').toLowerCase().replace(/\s+/g, '_');
     if (['delivered', 'completed'].includes(normDelStatus)) {
       orderTargetStatus = 'completed';
-    } else if (['in_transit', 'en_route', 'dispatched', 'on_way'].includes(normDelStatus)) {
+    } else if (normDelStatus === 'en_route') {
+      orderTargetStatus = 'en_route';
+    } else if (['in_transit', 'dispatched', 'on_way'].includes(normDelStatus)) {
       orderTargetStatus = 'in_transit';
     } else if (['arrived'].includes(normDelStatus)) {
       orderTargetStatus = 'arrived';
@@ -783,7 +805,13 @@ export const updateDelivery = async (id, data, tenantId, performerId, clientId =
         },
         data: {
           assignedEmployeeId: finalAssignedEmployee,
-          status: 'assigned',
+          status: (() => {
+            const st = String(data.status || parsedData.status || delivery.status || '').toLowerCase().replace(/\s+/g, '_');
+            if (['delivered', 'completed'].includes(st)) return 'completed';
+            if (['en_route', 'in_transit', 'dispatched'].includes(st)) return 'en_route';
+            if (st === 'arrived') return 'arrived';
+            return 'assigned';
+          })(),
           metadata: {
             ...(dName ? { driverName: dName } : {}),
             ...(emp ? { driverId: emp.user?.id || emp.userId } : {}),
