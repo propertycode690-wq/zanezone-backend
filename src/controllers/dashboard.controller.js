@@ -74,8 +74,19 @@ function buildRevenueChartData(paidInvoices, revenueFilter) {
 
 export const getDashboardStats = async (req, res, next) => {
   try {
+    const rawRole = typeof req.user?.role === 'string' ? req.user.role : (req.user?.role?.name || req.user?.roleName || '');
+    const roleName = String(rawRole).toUpperCase();
+    const userTenant = req.user?.tenantId ? Number(req.user.tenantId) : 1;
+    const isHQStaff = ['SUPER_ADMIN', 'SUPERADMIN', 'ADMIN', 'OPERATIONS', 'LOGISTICS', 'CONCIERGE', 'STAFF', 'PROCUREMENT', 'INVENTORY'].includes(roleName) && userTenant === 1;
+
     const tenantId = resolveTenantId(req);
     const filter = { tenantId };
+
+    // Operational filter: For central HQ staff / SuperAdmin, operational missions and fleet/chauffeur
+    // tasks span across tenant accounts unless explicitly filtered by ?tenantId=
+    const operationalFilter = isHQStaff
+      ? (req.query.tenantId ? { tenantId: Number(req.query.tenantId) } : {})
+      : filter;
 
     const revenueFilter = req.query.revenueFilter || 'Monthly';
     const filterDays = { 'Daily': 1, 'Weekly': 7, 'Monthly': 30, 'Quarterly': 90, 'Annual': 365 };
@@ -111,7 +122,7 @@ export const getDashboardStats = async (req, res, next) => {
       prisma.order.count({ where: { ...filter } }),
       prisma.order.count({ where: { ...filter, status: { notIn: ['completed', 'cancelled'] } } }),
       prisma.order.count({ where: { ...filter, status: 'completed' } }),
-      prisma.delivery.count({ where: { ...filter, status: 'Pending' } }),
+      prisma.delivery.count({ where: { ...operationalFilter, status: 'Pending' } }),
       prisma.user.count({ where: { ...filter, status: 'active' } }),
       prisma.user.count({ where: filter }),
       prisma.user.count({ where: { ...filter, lastLogin: { gte: last24h } } }),
@@ -122,7 +133,20 @@ export const getDashboardStats = async (req, res, next) => {
       prisma.supportTicket.count({ where: { ...filter, status: { notIn: ['Closed', 'Resolved', 'closed', 'resolved', 'Rejected', 'rejected'] } } }),
       prisma.event.count({ where: { ...filter, status: { notIn: ['Completed', 'Cancelled', 'completed', 'cancelled'] } } }),
       // Chauffeur requests — orders of type CHAUFFEUR that are not completed/cancelled
-      prisma.order.count({ where: { ...filter, orderType: 'CHAUFFEUR', status: { notIn: ['completed', 'cancelled'] } } }),
+      prisma.order.count({
+        where: {
+          ...operationalFilter,
+          orderType: { in: ['CHAUFFEUR', 'chauffeur', 'Chauffeur'] },
+          status: {
+            notIn: [
+              'completed', 'Completed', 'COMPLETED',
+              'cancelled', 'Cancelled', 'CANCELLED', 'canceled', 'Canceled',
+              'delivered', 'Delivered', 'DELIVERED',
+              'rejected', 'Rejected', 'done', 'Done'
+            ]
+          }
+        }
+      }),
       // Loss assessments — sum of quantity × item price for asset loss
       prisma.lossAssessment.findMany({
         where: filter,
