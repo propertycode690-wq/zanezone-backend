@@ -68,6 +68,7 @@ export const findAllUsersByTenant = async (tenantId, query) => {
         role: true,
         status: true,
         vacationBalance: true,
+        bankingInfo: true,
         birthday: true,
         employmentStatus: true,
         hasPassport: true,

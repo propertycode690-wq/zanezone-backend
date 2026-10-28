@@ -12,6 +12,9 @@ export const createUser = async (req, res, next) => {
     // ensure tenant isolation
     data.tenantId = req.user.tenantId || data.tenantId || 1;
 
+    const vQuota = data.vacationBalance !== undefined ? Number(data.vacationBalance) : 80;
+    const baseBanking = (typeof data.bankingInfo === 'object' && data.bankingInfo) ? data.bankingInfo : {};
+
     // robust payload prep for prisma
     const payload = {
       name: data.name,
@@ -21,7 +24,7 @@ export const createUser = async (req, res, next) => {
       phone: data.phone || null,
       tenantId: data.tenantId,
       status: data.status || 'Active',
-      vacationBalance: data.vacationBalance ? Number(data.vacationBalance) : 0,
+      vacationBalance: vQuota,
       birthday: data.birthday ? new Date(data.birthday) : null,
       nibNumber: data.nibNumber || null,
       employmentStatus: data.employmentStatus || 'Full Time',
@@ -29,7 +32,10 @@ export const createUser = async (req, res, next) => {
       hasLicense: !!data.hasLicense,
       hasNIB: !!data.hasNIB,
       hasResume: !!data.hasResume,
-      bankingInfo: data.bankingInfo || {}
+      bankingInfo: {
+        ...baseBanking,
+        vacationQuota: vQuota
+      }
     };
 
     const user = await userService.createUser(
@@ -198,7 +204,12 @@ export const updateUser = async (req, res, next) => {
     if (data.nibUrl !== undefined) payload.nibUrl = data.nibUrl || null;
     if (data.resumeUrl !== undefined) payload.resumeUrl = data.resumeUrl || null;
     if (data.certsUrl !== undefined) payload.certsUrl = data.certsUrl || null;
-    if (data.bankingInfo !== undefined) payload.bankingInfo = data.bankingInfo || {};
+    if (data.bankingInfo !== undefined) {
+      payload.bankingInfo = {
+        ...(typeof data.bankingInfo === 'object' && data.bankingInfo ? data.bankingInfo : {}),
+        ...(payload.bankingInfo?.vacationQuota !== undefined ? { vacationQuota: payload.bankingInfo.vacationQuota } : {})
+      };
+    }
     if (data.isSalaried !== undefined) payload.isSalaried = !!data.isSalaried;
 
     // Concierge & Membership fields
@@ -208,6 +219,16 @@ export const updateUser = async (req, res, next) => {
     if (data.concierge_membership_since !== undefined) payload.concierge_membership_since = data.concierge_membership_since;
 
     const updatedUser = await userService.updateUser(Number(req.params.id), payload, tenantIdToFilter, req.ip, req.headers['user-agent']);
+    
+    if (data.vacationBalance !== undefined) {
+      try {
+        const { recalculateUserVacationBalance } = await import('./leave.controller.js');
+        await recalculateUserVacationBalance(Number(req.params.id));
+      } catch (recErr) {
+        console.warn('Failed to recalculate balance after user update:', recErr);
+      }
+    }
+
     sendResponse(res, 200, 'User updated successfully', updatedUser);
   } catch (error) {
     next(error);
