@@ -26,6 +26,7 @@ const corsOptions = {
       'https://zanezion-01.netlify.app',
       'https://zanezion.netlify.app',
       'https://zanezion-updated.netlify.app',
+      'https://ubiquitous-salamander-5271f2.netlify.app',
       ...envOrigins
     ];
 
