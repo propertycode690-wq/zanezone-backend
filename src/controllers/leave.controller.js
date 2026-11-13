@@ -1,16 +1,24 @@
 import prisma from '../config/db.js';
 import { sendResponse } from '../utils/response.js';
 
-const BASE_VACATION_QUOTA = 10000;
-
 /**
  * Recalculates exact vacation balance for a user:
- * Total Quota (10,000 Hours) - Sum of Approved Leave Hours = Remaining Balance
+ * Dedicated Quota (User's Allocated Hours) - Sum of Approved Leave Hours = Remaining Balance
  */
 export const recalculateUserVacationBalance = async (userId) => {
   try {
     if (!userId) return null;
     const targetId = Number(userId);
+
+    const user = await prisma.user.findUnique({
+      where: { id: targetId }
+    });
+    if (!user) return null;
+
+    const bankingInfo = (user.bankingInfo && typeof user.bankingInfo === 'object') ? user.bankingInfo : {};
+    const quota = bankingInfo.vacationQuota !== undefined
+      ? Number(bankingInfo.vacationQuota)
+      : (user.vacationBalance !== 10000 && user.vacationBalance > 0 ? user.vacationBalance : 80);
 
     const approvedRequests = await prisma.leaveRequest.findMany({
       where: {
@@ -29,14 +37,20 @@ export const recalculateUserVacationBalance = async (userId) => {
       totalDeducted += reqHours;
     });
 
-    const remainingBalance = Math.max(0, BASE_VACATION_QUOTA - totalDeducted);
+    const remainingBalance = Math.max(0, quota - totalDeducted);
 
     await prisma.user.update({
       where: { id: targetId },
-      data: { vacationBalance: remainingBalance }
+      data: {
+        vacationBalance: remainingBalance,
+        bankingInfo: {
+          ...bankingInfo,
+          vacationQuota: quota
+        }
+      }
     });
 
-    return { totalDeducted, remainingBalance };
+    return { totalDeducted, remainingBalance, quota };
   } catch (err) {
     console.error(`Failed to recalculate vacation balance for User #${userId}:`, err);
     return null;
