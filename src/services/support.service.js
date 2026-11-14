@@ -83,7 +83,7 @@ export const getTickets = async (tenantId, user) => {
   const normalizedRole = roleName.toLowerCase().replace(/\s+/g, '_');
   const userTenant = user?.tenantId ? Number(user.tenantId) : 1;
   const isHQStaff = ['super_admin', 'superadmin', 'admin', 'concierge', 'operations', 'logistics', 'procurement', 'inventory', 'staff'].includes(normalizedRole) && userTenant === 1;
-  const effectiveTenantId = isHQStaff ? null : tenantId;
+  const effectiveTenantId = isHQStaff ? (tenantId && tenantId !== 1 ? tenantId : 1) : (userTenant || tenantId);
   const tickets = await supportRepository.findAllTickets(effectiveTenantId);
 
   if (['customer', 'individual_client', 'personal'].some(r => normalizedRole.includes(r))) {
@@ -103,7 +103,7 @@ export const getTicketById = async (id, tenantId, user) => {
   const normalizedRole = roleName.toLowerCase().replace(/\s+/g, '_');
   const userTenant = user?.tenantId ? Number(user.tenantId) : 1;
   const isHQStaff = ['super_admin', 'superadmin', 'admin', 'concierge', 'operations', 'logistics', 'procurement', 'inventory', 'staff'].includes(normalizedRole) && userTenant === 1;
-  const effectiveTenantId = isHQStaff ? null : tenantId;
+  const effectiveTenantId = isHQStaff ? (tenantId && tenantId !== 1 ? tenantId : 1) : (userTenant || tenantId);
 
   const ticket = await supportRepository.findTicketById(id, effectiveTenantId);
   if (!ticket) throw new AppError('Ticket not found', 404);
