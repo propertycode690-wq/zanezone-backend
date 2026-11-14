@@ -12,6 +12,30 @@ export const createUser = async (req, res, next) => {
     // ensure tenant isolation
     data.tenantId = req.user.tenantId || data.tenantId || 1;
 
+    if (data.birthday) {
+      const birthStr = String(data.birthday).trim().split('T')[0];
+      const parts = birthStr.split('-').map(Number);
+      const birthDate = (parts.length === 3 && !parts.some(n => Number.isNaN(n)))
+        ? new Date(parts[0], parts[1] - 1, parts[2])
+        : new Date(data.birthday);
+
+      if (isNaN(birthDate.getTime())) {
+        return res.status(400).json({ success: false, message: 'Invalid birthday format' });
+      }
+      const today = new Date();
+      if (birthDate > today) {
+        return res.status(400).json({ success: false, message: 'Birthday cannot be in the future' });
+      }
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const m = today.getMonth() - birthDate.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+      }
+      if (age < 18) {
+        return res.status(400).json({ success: false, message: 'User must be at least 18 years old' });
+      }
+    }
+
     const vQuota = data.vacationBalance !== undefined ? Number(data.vacationBalance) : 80;
     const baseBanking = (typeof data.bankingInfo === 'object' && data.bankingInfo) ? data.bankingInfo : {};
 
@@ -191,7 +215,34 @@ export const updateUser = async (req, res, next) => {
     if (data.email !== undefined) payload.email = data.email;
     if (data.phone !== undefined) payload.phone = data.phone;
     if (data.password !== undefined && data.password) payload.password = data.password;
-    if (data.birthday !== undefined) payload.birthday = data.birthday ? new Date(data.birthday) : null;
+    if (data.birthday !== undefined) {
+      if (data.birthday) {
+        const birthStr = String(data.birthday).trim().split('T')[0];
+        const parts = birthStr.split('-').map(Number);
+        const birthDate = (parts.length === 3 && !parts.some(n => Number.isNaN(n)))
+          ? new Date(parts[0], parts[1] - 1, parts[2])
+          : new Date(data.birthday);
+
+        if (isNaN(birthDate.getTime())) {
+          return res.status(400).json({ success: false, message: 'Invalid birthday format' });
+        }
+        const today = new Date();
+        if (birthDate > today) {
+          return res.status(400).json({ success: false, message: 'Birthday cannot be in the future' });
+        }
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const m = today.getMonth() - birthDate.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+          age--;
+        }
+        if (age < 18) {
+          return res.status(400).json({ success: false, message: 'User must be at least 18 years old' });
+        }
+        payload.birthday = birthDate;
+      } else {
+        payload.birthday = null;
+      }
+    }
     if (data.nibNumber !== undefined) payload.nibNumber = data.nibNumber || null;
     if (data.hasPassport !== undefined) payload.hasPassport = !!data.hasPassport;
     if (data.hasLicense !== undefined) payload.hasLicense = !!data.hasLicense;

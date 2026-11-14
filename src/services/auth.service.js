@@ -464,6 +464,30 @@ export const signupUser = async (data, file) => {
 export const registerStaff = async (data, files) => {
   const { name, email, password, phone, employment_status, birthday, bank_name, account_number, routing_number, nib_number } = data;
 
+  if (birthday) {
+    const birthStr = String(birthday).trim().split('T')[0];
+    const parts = birthStr.split('-').map(Number);
+    const birthDate = (parts.length === 3 && !parts.some(n => Number.isNaN(n)))
+      ? new Date(parts[0], parts[1] - 1, parts[2])
+      : new Date(birthday);
+
+    if (isNaN(birthDate.getTime())) {
+      throw new AppError('Invalid birthday format', 400);
+    }
+    const today = new Date();
+    if (birthDate > today) {
+      throw new AppError('Date of birth cannot be in the future', 400);
+    }
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    if (age < 18) {
+      throw new AppError('Staff member must be at least 18 years old', 400);
+    }
+  }
+
   const roleRecord = await prisma.role.findUnique({ where: { name: 'STAFF' } });
   if (!roleRecord) {
     throw new AppError('Role STAFF not found in system', 400);

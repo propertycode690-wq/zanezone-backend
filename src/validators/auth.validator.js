@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { validateBirthday18Plus } from './user.validator.js';
 
 export const loginSchema = z.object({
   body: z.object({
@@ -42,7 +43,9 @@ export const updateProfileSchema = z.object({
     phone: z.string().optional(),
     avatar: z.string().nullable().optional(),
     password: z.string().min(6).optional().or(z.literal('')),
-    birthday: z.string().nullable().optional(),
+    birthday: z.string().nullable().optional().refine(validateBirthday18Plus, {
+      message: 'User must be at least 18 years old and birthday cannot be in the future',
+    }),
     nibNumber: z.string().nullable().optional(),
     bankingInfo: z.object({
       bank: z.string().nullable().optional(),
