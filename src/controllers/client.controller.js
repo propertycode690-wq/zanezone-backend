@@ -95,7 +95,7 @@ export const getClients = async (req, res, next) => {
       }
     }
 
-    if (['INDIVIDUAL_CLIENT', 'CUSTOMER'].includes(roleName)) {
+    if (['INDIVIDUAL_CLIENT', 'CUSTOMER', 'CLIENT', 'SAAS_CLIENT'].includes(roleName)) {
       let resolvedClientId = req.user.clientId;
       if (!resolvedClientId) {
         const clientRec = await prisma.client.findFirst({
@@ -110,6 +110,7 @@ export const getClients = async (req, res, next) => {
       }
       if (resolvedClientId) {
         req.query.id = resolvedClientId;
+        tenantIdToFilter = null;
       }
     }
 
@@ -129,7 +130,8 @@ export const getClientById = async (req, res, next) => {
     ].includes(roleName) || req.user?.roleId === 1 || req.user?.roleId === 2;
 
     let tenantIdToFilter = resolveTenantId(req);
-    if (isHQStaff) {
+    const isOwnClient = req.user?.clientId === Number(req.params.id) || req.user?.company_id === Number(req.params.id) || ['CLIENT', 'SAAS_CLIENT'].includes(roleName);
+    if (isHQStaff || isOwnClient) {
       tenantIdToFilter = null;
     }
 
@@ -149,7 +151,8 @@ export const updateClient = async (req, res, next) => {
     ].includes(roleName) || req.user?.roleId === 1 || req.user?.roleId === 2;
 
     let tenantIdToFilter = resolveTenantId(req);
-    if (isHQStaff) {
+    const isOwnClient = req.user?.clientId === Number(req.params.id) || req.user?.company_id === Number(req.params.id) || ['CLIENT', 'SAAS_CLIENT'].includes(roleName);
+    if (isHQStaff || isOwnClient) {
       tenantIdToFilter = null;
     }
 
@@ -225,7 +228,8 @@ export const deleteClient = async (req, res, next) => {
     ].includes(roleName) || req.user?.roleId === 1 || req.user?.roleId === 2;
 
     let tenantIdToFilter = resolveTenantId(req);
-    if (isHQStaff) {
+    const isOwnClient = req.user?.clientId === Number(req.params.id) || req.user?.company_id === Number(req.params.id) || ['CLIENT', 'SAAS_CLIENT'].includes(roleName);
+    if (isHQStaff || isOwnClient) {
       tenantIdToFilter = null;
     }
 
