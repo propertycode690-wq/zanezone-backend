@@ -170,7 +170,7 @@ export const handleUploadsAccess = async (req, res, next) => {
     // Authorization & Tenant Isolation Checks
     const requesterRole = String(requester.role?.name || '').toUpperCase();
     const isSuperAdmin = requesterRole === 'SUPER_ADMIN' || requesterRole === 'SUPERADMIN';
-    const isAdminOrHR = ['ADMIN', 'HR', 'HR_MANAGER', 'OPERATIONS'].includes(requesterRole);
+    const isAdminOrHR = ['ADMIN', 'HR', 'HR_MANAGER', 'OPERATIONS', 'SAAS_CLIENT', 'SAAS_ADMIN', 'CLIENT', 'BUSINESS_CLIENT'].includes(requesterRole);
 
     let isAuthorized = false;
 

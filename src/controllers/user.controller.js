@@ -308,10 +308,21 @@ export const uploadDocument = async (req, res, next) => {
     const isOwner = req.user && req.user.id === userId;
     const requesterRole = String(req.user?.role?.name || '').toUpperCase();
     const isSuperAdmin = requesterRole === 'SUPER_ADMIN' || requesterRole === 'SUPERADMIN';
-    const isTenantAdminOrHR = ['ADMIN', 'HR', 'HR_MANAGER', 'OPERATIONS'].includes(requesterRole);
+    const isTenantAdminOrHR = ['ADMIN', 'HR', 'HR_MANAGER', 'OPERATIONS', 'SAAS_CLIENT', 'SAAS_ADMIN', 'CLIENT', 'BUSINESS_CLIENT'].includes(requesterRole);
 
     if (!isOwner && !isSuperAdmin && !isTenantAdminOrHR) {
       return sendResponse(res, 403, 'Forbidden: You do not have permission to upload documents for another user');
+    }
+
+    const targetUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, tenantId: true }
+    });
+    if (!targetUser) {
+      return sendResponse(res, 404, 'User not found');
+    }
+    if (!isSuperAdmin && req.user.tenantId && req.user.tenantId !== 1 && targetUser.tenantId !== req.user.tenantId) {
+      return sendResponse(res, 403, 'Forbidden: Cross-tenant upload not allowed');
     }
 
     const documentTypes = {
@@ -368,7 +379,7 @@ export const uploadDocument = async (req, res, next) => {
       secureUrl = `/uploads/${filename}`;
     }
 
-    const tenantIdToFilter = resolveTenantId(req);
+    const tenantIdToFilter = isSuperAdmin ? null : (req.user?.tenantId || 1);
 
     const payload = {
       [docConfig.key]: true,
