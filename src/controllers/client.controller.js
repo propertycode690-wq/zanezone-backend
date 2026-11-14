@@ -158,7 +158,7 @@ export const updateClient = async (req, res, next) => {
     // Safely extract and map ONLY the fields known to Prisma schema
     const clientData = {};
     if (payload.clientCode !== undefined) clientData.clientCode = payload.clientCode;
-    if (payload.companyName !== undefined || payload.name !== undefined) clientData.companyName = payload.companyName || payload.name;
+    if (payload.companyName !== undefined || payload.name !== undefined || payload.business_name !== undefined) clientData.companyName = payload.companyName || payload.name || payload.business_name;
     if (payload.contactPerson !== undefined || payload.contact !== undefined) clientData.contactPerson = payload.contactPerson || payload.contact;
     if (payload.email !== undefined) clientData.email = payload.email;
     if (payload.phone !== undefined) clientData.phone = payload.phone;
@@ -170,7 +170,7 @@ export const updateClient = async (req, res, next) => {
     if (payload.billingCycle !== undefined || payload.billing_cycle !== undefined) clientData.billingCycle = payload.billingCycle || payload.billing_cycle;
     if (payload.paymentMethod !== undefined || payload.payment_method !== undefined) clientData.paymentMethod = payload.paymentMethod || payload.payment_method;
     if (payload.plan !== undefined) clientData.plan = payload.plan;
-    if (payload.logoUrl !== undefined || payload.logo !== undefined) clientData.logoUrl = payload.logoUrl || payload.logo;
+    if (payload.logoUrl !== undefined || payload.logo !== undefined || payload.logo_url !== undefined) clientData.logoUrl = payload.logoUrl || payload.logo || payload.logo_url;
     if (payload.source !== undefined) clientData.source = payload.source;
 
     const updatedClient = await clientService.updateClient(Number(req.params.id), clientData, tenantIdToFilter, req.user.id);
