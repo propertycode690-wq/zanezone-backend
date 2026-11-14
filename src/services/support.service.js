@@ -8,7 +8,7 @@ const generateId = (prefix) => `${prefix}-${Math.floor(1000 + Math.random() * 89
 const sanitizeAndUploadMessages = async (messages) => {
   if (!Array.isArray(messages)) return messages;
   const baseFolder = process.env.CLOUDINARY_FOLDER || 'zanezion';
-  
+
   const processed = [];
   for (const msg of messages) {
     if (!msg || typeof msg !== 'object') {
@@ -113,8 +113,8 @@ export const getTicketById = async (id, tenantId, user) => {
     const myEmail = String(user?.email || '').toLowerCase().trim();
     const myClientId = user?.clientId;
     const isOwner = (myUserId && ticket.createdById === myUserId) ||
-                    (myEmail && ticket.createdByEmail?.toLowerCase().trim() === myEmail) ||
-                    (myClientId && ticket.clientId === myClientId);
+      (myEmail && ticket.createdByEmail?.toLowerCase().trim() === myEmail) ||
+      (myClientId && ticket.clientId === myClientId);
     if (!isOwner) {
       throw new AppError('Access denied to this ticket', 403);
     }
@@ -211,7 +211,7 @@ export const getEvents = async (tenantId, user) => {
   const normalizedRole = roleName.toLowerCase().replace(/\s+/g, '_');
   const userTenant = user?.tenantId ? Number(user.tenantId) : 1;
   const isHQStaff = ['super_admin', 'superadmin', 'admin', 'concierge', 'operations', 'logistics', 'procurement', 'inventory', 'staff'].includes(normalizedRole) && userTenant === 1;
-  const effectiveTenantId = isHQStaff ? null : tenantId;
+  const effectiveTenantId = isHQStaff ? (tenantId && tenantId !== 1 ? tenantId : 1) : (userTenant || tenantId);
   const events = await supportRepository.findAllEvents(effectiveTenantId);
 
   if (['customer', 'individual_client', 'personal'].some(r => normalizedRole.includes(r))) {
@@ -313,7 +313,7 @@ export const updateGuestRequest = async (id, data, tenantId, performerId) => {
     existing = await supportRepository.findGuestRequestById(id, null);
   }
   if (!existing) throw new AppError('Guest Request not found', 404);
-  
+
   if (data.guest && !data.guestName) data.guestName = data.guest;
 
   const updated = await supportRepository.updateGuestRequest(id, existing.tenantId ?? tenantId, data);
