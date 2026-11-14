@@ -107,10 +107,7 @@ const defaultPurchaseRequests = [
   { id: "PR-002", item: "Egyptian Cotton Sheets", qty: 50, price: 35, total: 1750, category: "Home", status: "Pending", requester: "John Doe", date: "2026-06-03" }
 ];
 
-const defaultQuotes = [
-  { id: "Q-001", requestId: "PR-001", vendorName: "Nassau Wine & Spirits", price: 180, total: 4320, deliveryTime: "2 Days", status: "Approved" },
-  { id: "Q-002", requestId: "PR-001", vendorName: "Caribbean Fine Provisions", price: 195, total: 4680, deliveryTime: "3 Days", status: "Pending" }
-];
+const defaultQuotes = [];
 
 const defaultPurchaseOrders = [
   { id: "PO-001", requestId: "PR-001", quoteId: "Q-001", vendorName: "Nassau Wine & Spirits", total: 4320, status: "Issued", date: "2026-06-02" }

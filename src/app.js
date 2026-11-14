@@ -169,6 +169,7 @@ app.use('/api/v1/saas', saasRoutes);
 app.use('/api/v1/purchase-requests', purchaseRequestRoutes);
 app.use('/api/v1/rfqs', rfqRoutes);
 app.use('/api/v1/quotations', quotationRoutes);
+app.use('/api/v1/procurement/quotes', quotationRoutes);
 app.use('/api/v1/purchase-orders', purchaseOrderRoutes);
 
 // Register Phase 6 routes
