@@ -14,15 +14,17 @@ export const createOrder = async (req, res, next) => {
 
     const rawRole = typeof req.user?.role === 'string' ? req.user.role : (req.user?.role?.name || req.user?.roleName || '');
     const roleName = String(rawRole).toUpperCase();
+    const userTenant = req.user?.tenantId ? Number(req.user.tenantId) : 1;
     const isCustomerRole = ['INDIVIDUAL_CLIENT', 'CUSTOMER'].includes(roleName);
     const isBusinessClient = req.user.role?.name === 'BUSINESS_CLIENT' || req.user.role?.name === 'CLIENT';
-    const tenantIdToUse = isCustomerRole
-      ? (req.user.tenantId ? Number(req.user.tenantId) : resolveTenantId(req))
+    const tenantIdToUse = (userTenant !== 1)
+      ? userTenant
       : (req.body.tenantId
           ? Number(req.body.tenantId)
           : (incomingCompanyId && !isNaN(Number(incomingCompanyId)) && Number(incomingCompanyId) > 0
               ? Number(incomingCompanyId)
               : resolveTenantId(req)));
+    req.body.tenantId = tenantIdToUse;
 
     // Try to parse clientId from payload
     let parsedClientId = incomingClientId && incomingClientId !== "" && incomingClientId !== "CLT-GUEST" ? Number(incomingClientId) : null;
@@ -129,10 +131,16 @@ export const getOrders = async (req, res, next) => {
     const userTenant = req.user?.tenantId ? Number(req.user.tenantId) : 1;
     const isHQStaff = ['SUPER_ADMIN', 'SUPERADMIN', 'ADMIN', 'OPERATIONS', 'LOGISTICS', 'CONCIERGE', 'STAFF', 'PROCUREMENT', 'INVENTORY'].includes(roleName) && userTenant === 1;
     const isCustomerRole = ['INDIVIDUAL_CLIENT', 'CUSTOMER'].includes(roleName);
-    const isClientRole = ['BUSINESS_CLIENT', 'CLIENT', 'SAAS_CLIENT'].includes(roleName);
+    const isClientRole = ['BUSINESS_CLIENT', 'CLIENT'].includes(roleName);
+    const isChauffeurQuery = String(req.query.orderType || '').toUpperCase() === 'CHAUFFEUR';
 
-    // HQ Staff and Admin on tenant 1 have central cross-tenant visibility unless drilling down via ?tenantId=
-    const tenantIdToFilter = isHQStaff ? (req.query.tenantId ? Number(req.query.tenantId) : null) : resolveTenantId(req);
+    // For Chauffeur orders:
+    // - HQ Staff (tenant 1): only see Tenant 1 Chauffeur orders by default (unless explicitly drilling down with ?tenantId=)
+    // - SaaS Admin / SaaS users (tenant > 1): only see their own tenant's Chauffeur orders
+    // For general orders: HQ Staff has central visibility unless ?tenantId= is specified
+    const tenantIdToFilter = isHQStaff
+      ? (req.query.tenantId ? Number(req.query.tenantId) : (isChauffeurQuery ? 1 : null))
+      : resolveTenantId(req);
 
     if (isCustomerRole) {
       let resolvedClientId = req.user.clientId;

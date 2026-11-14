@@ -132,10 +132,10 @@ export const getDashboardStats = async (req, res, next) => {
       prisma.item.findMany({ where: masterFilter, select: { reorderLevel: true, price: true, inventoryStock: { select: { quantity: true } } } }),
       prisma.supportTicket.count({ where: { ...filter, status: { notIn: ['Closed', 'Resolved', 'closed', 'resolved', 'Rejected', 'rejected'] } } }),
       prisma.event.count({ where: { ...filter, status: { notIn: ['Completed', 'Cancelled', 'completed', 'cancelled'] } } }),
-      // Chauffeur requests — orders of type CHAUFFEUR that are not completed/cancelled
+      // Chauffeur requests — orders of type CHAUFFEUR scoped to tenant
       prisma.order.count({
         where: {
-          ...operationalFilter,
+          ...(req.query.tenantId ? { tenantId: Number(req.query.tenantId) } : filter),
           orderType: { in: ['CHAUFFEUR', 'chauffeur', 'Chauffeur'] },
           status: {
             notIn: [
