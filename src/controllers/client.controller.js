@@ -95,7 +95,8 @@ export const getClients = async (req, res, next) => {
       }
     }
 
-    if (['INDIVIDUAL_CLIENT', 'CUSTOMER', 'CLIENT', 'SAAS_CLIENT'].includes(roleName)) {
+    // Personal clients: view only their own record (no tenant filter needed, filtered by clientId)
+    if (['INDIVIDUAL_CLIENT', 'CUSTOMER', 'CLIENT'].includes(roleName)) {
       let resolvedClientId = req.user.clientId;
       if (!resolvedClientId) {
         const clientRec = await prisma.client.findFirst({
@@ -112,6 +113,11 @@ export const getClients = async (req, res, next) => {
         req.query.id = resolvedClientId;
         tenantIdToFilter = null;
       }
+    }
+
+    // SaaS client: strictly scoped to their own tenant — never expose other tenants' customers
+    if (roleName === 'SAAS_CLIENT' || roleName === 'SAAS_ADMIN') {
+      tenantIdToFilter = req.user.tenantId ? Number(req.user.tenantId) : tenantIdToFilter;
     }
 
     const result = await clientService.getClients(tenantIdToFilter, req.query);

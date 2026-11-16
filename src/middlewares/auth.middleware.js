@@ -104,8 +104,11 @@ export const authenticate = async (req, res, next) => {
       client = await prisma.client.findFirst({ where: { tenantId: user.tenantId } });
     }
     if (!client && user.name) {
+      // Always scope by tenantId when available to prevent cross-tenant clientId assignment
       client = await prisma.client.findFirst({
-        where: { companyName: user.name }
+        where: user.tenantId
+          ? { companyName: user.name, tenantId: user.tenantId }
+          : { companyName: user.name }
       });
     }
     if (client) {
